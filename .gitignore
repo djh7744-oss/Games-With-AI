@@ -1,0 +1,32 @@
+# 忽略操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 忽略临时文件
+*.tmp
+*.temp
+~$*.xlsx
+~$*.docx
+*.bak
+
+# 忽略 AI 生成的中间产物（保留最终版）
+*_gen_v*.md
+*_ai_draft*.md
+.ai_cache/
+
+# 忽略 Obsidian 配置（每个人不同）
+.obsidian/
+.trash/
+
+# 保留 Excel 源文件但不跟踪 .xlsx（用 CSV 替代）
+*.xlsx
+
+# 忽略大文件（参考图片等使用外部链接）
+*.psd
+*.blend
+*.fbx
+
+# 忽略导出/发布产物
+_output/
+_publish/
