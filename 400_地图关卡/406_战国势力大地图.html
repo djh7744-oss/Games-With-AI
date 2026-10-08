@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>战国七雄势力大地图 · 原型</title>
+<style>
+  :root{
+    --parchment:#EDE2C6;
+    --parchment-deep:#E3D4AE;
+    --ink:#3A2C1B;
+    --ink-soft:#6B5B41;
+    --frame:#5A4630;
+    --frame-dark:#3E2F1E;
+    --sea:#A9C6D0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:radial-gradient(ellipse at 50% 30%, #57422B 0%, #3A2B19 70%, #2A1F12 100%);
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px; font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+  }
+  .map-shell{
+    position:relative; width:min(1560px,96vw);
+    background:var(--parchment);
+    border:10px solid var(--frame);
+    outline:3px solid var(--frame-dark);
+    box-shadow:0 24px 80px rgba(0,0,0,.65), inset 0 0 0 2px rgba(255,248,220,.35);
+    border-radius:6px; overflow:hidden;
+  }
+  #map-svg{display:block; width:100%; height:auto; cursor:grab; touch-action:none}
+  #map-svg.dragging{cursor:grabbing}
+  .map-font{font-family:"Kaiti SC","STKaiti","KaiTi","Noto Serif SC","SimSun",serif}
+
+  /* ---- 标题横幅 ---- */
+  .cartouche{
+    position:absolute; top:4%; left:50%; transform:translateX(-50%);
+    text-align:center; pointer-events:none; z-index:5;
+  }
+  .cartouche h1{
+    font-family:"Kaiti SC","STKaiti","KaiTi","Noto Serif SC","SimSun",serif;
+    font-size:clamp(22px,3.2vw,44px); letter-spacing:.35em; padding-left:.35em;
+    color:var(--ink); text-shadow:0 1px 0 #FBF3DC, 0 0 18px rgba(251,243,220,.8);
+    white-space:nowrap;
+  }
+  .cartouche .sub{
+    margin-top:4px; font-size:clamp(11px,1.15vw,15px); letter-spacing:.22em;
+    color:var(--ink-soft); background:rgba(237,226,198,.72);
+    padding:3px 14px; border-radius:3px; display:inline-block;
+  }
+
+  /* ---- 图例面板 ---- */
+  .legend{
+    position:absolute; top:4%; right:2.2%; width:230px; z-index:6;
+    background:rgba(227,212,174,.92);
+    border:2px solid var(--frame); border-radius:4px;
+    box-shadow:0 6px 18px rgba(40,25,10,.35);
+    padding:10px 12px; font-size:12.5px; color:var(--ink);
+  }
+  .legend h2{
+    font-family:"Kaiti SC","STKaiti","KaiTi",serif; font-size:15px;
+    letter-spacing:.25em; text-align:center; border-bottom:1px solid var(--ink-soft);
+    padding-bottom:4px; margin-bottom:8px;
+  }
+  .lg-row{display:flex; align-items:center; gap:7px; margin:5px 0; cursor:pointer; user-select:none}
+  .lg-row.off{opacity:.35}
+  .chip{width:14px; height:14px; border-radius:3px; border:1px solid rgba(58,44,27,.55); flex:none}
+  .lg-row .nm{letter-spacing:.12em}
+  .lg-sep{border-top:1px dashed var(--ink-soft); margin:8px 0 5px; padding-top:6px}
+  .lg-item{display:flex; align-items:center; gap:7px; margin:4px 0}
+  .lg-item svg{flex:none}
+  .lg-item .nm{color:var(--ink)}
+  .lg-item .hint{color:var(--ink-soft); font-size:11px; margin-left:auto}
+  .lg-switch{display:flex; align-items:center; gap:6px; margin:3px 0; cursor:pointer; user-select:none}
+  .lg-switch input{accent-color:#6B4A2C}
+  .lg-switch .nm{font-size:12px; letter-spacing:.1em}
+
+  /* ---- 缩放控件 ---- */
+  .zoomctl{position:absolute; left:2.2%; bottom:9%; z-index:6; display:flex; flex-direction:column}
+  .zoomctl button{
+    width:34px; height:34px; font-size:18px; line-height:1;
+    background:rgba(227,212,174,.94); border:2px solid var(--frame); color:var(--ink);
+    cursor:pointer; font-family:serif;
+  }
+  .zoomctl button:first-child{border-radius:4px 4px 0 0; border-bottom-width:1px}
+  .zoomctl button:last-child{border-radius:0 0 4px 4px; border-top-width:1px}
+  .zoomctl button:hover{background:#F2E8CC}
+
+  /* ---- 悬浮提示 ---- */
+  #tip{
+    position:absolute; display:none; z-index:10; pointer-events:none;
+    background:rgba(58,44,27,.95); color:#F0E5C8; border:1px solid #C9B684;
+    border-radius:4px; padding:8px 12px; font-size:12.5px; max-width:240px;
+    box-shadow:0 6px 16px rgba(0,0,0,.5); line-height:1.55;
+  }
+  #tip .t-name{font-family:"Kaiti SC","STKaiti","KaiTi",serif; font-size:15px; letter-spacing:.15em}
+  #tip .t-tag{color:#D8C79B; font-size:11.5px}
+  #tip .t-desc{color:#CFC09A; font-size:11.5px; margin-top:3px}
+
+  .footnote{
+    position:absolute; bottom:1.4%; left:50%; transform:translateX(-50%);
+    font-size:11px; color:var(--ink-soft); letter-spacing:.12em; z-index:5; pointer-events:none;
+  }
+  details.data-table{
+    position:absolute; left:2.2%; bottom:2.2%; z-index:6;
+    background:rgba(227,212,174,.92); border:2px solid var(--frame); border-radius:4px;
+    padding:6px 10px; font-size:12px; color:var(--ink); max-width:60%;
+  }
+  details.data-table table{border-collapse:collapse; margin-top:6px; font-size:11.5px}
+  details.data-table td, details.data-table th{
+    border:1px solid #B9A97F; padding:2px 8px; text-align:left;
+  }
+</style>
+</head>
+<body>
+
+<div class="map-shell">
+  <div class="cartouche map-font">
+    <h1>戰國七雄勢力大地圖</h1>
+    <div class="sub">公元前350年 · 商鞅变法之际 · 依据《史记·六国年表》与七国世家</div>
+  </div>
+
+  <div class="legend">
+    <h2>七 国 势 力</h2>
+    <div style="text-align:center;font-size:10.5px;color:#6B5B41;margin:-3px 0 6px">点击色块可开关该势力显示</div>
+    <div class="lg-row" data-state="qin"><span class="chip" style="background:#1A1A1A"></span><span class="nm">秦 · 黑</span></div>
+    <div class="lg-row" data-state="chu"><span class="chip" style="background:#9B2C2C"></span><span class="nm">楚 · 深红</span></div>
+    <div class="lg-row" data-state="qi"><span class="chip" style="background:#2C5F9B"></span><span class="nm">齐 · 蓝</span></div>
+    <div class="lg-row" data-state="zhao"><span class="chip" style="background:#3A7D44"></span><span class="nm">赵 · 绿</span></div>
+    <div class="lg-row" data-state="yan"><span class="chip" style="background:#6B85A0"></span><span class="nm">燕 · 灰蓝</span></div>
+    <div class="lg-row" data-state="wei"><span class="chip" style="background:#6D4C9E"></span><span class="nm">魏 · 紫</span></div>
+    <div class="lg-row" data-state="han"><span class="chip" style="background:#C05A1F"></span><span class="nm">韩 · 橙</span></div>
+    <div class="lg-row" data-state="zhou"><span class="chip" style="background:#8A7A12"></span><span class="nm">周 · 金黄(王畿)</span></div>
+
+    <div class="lg-sep"></div>
+    <div class="lg-item">
+      <svg width="16" height="16" viewBox="-12 -12 24 24"><use href="#i-castle" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="1.4"/></svg>
+      <span class="nm">都城 (Lv5)</span>
+    </div>
+    <div class="lg-item">
+      <svg width="16" height="16" viewBox="-12 -12 24 24"><use href="#i-tower" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="1.4"/></svg>
+      <span class="nm">城池 (Lv2-Lv4)</span>
+    </div>
+    <div class="lg-item">
+      <svg width="16" height="16" viewBox="-12 -12 24 24"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.4"/></svg>
+      <span class="nm">关隘</span>
+    </div>
+    <div class="lg-item">
+      <svg width="16" height="16" viewBox="-12 -12 24 24"><use href="#i-ferry" fill="#3E6C8F" stroke="#EDE2C6" stroke-width="1.4"/></svg>
+      <span class="nm">渡口</span>
+    </div>
+    <div class="lg-item">
+      <svg width="16" height="8" viewBox="0 0 16 8"><path d="M0,4 H16" stroke="#8B6B3F" stroke-width="2" stroke-dasharray="3 2"/></svg>
+      <span class="nm">驰道</span>
+    </div>
+    <div class="lg-item">
+      <svg width="16" height="8" viewBox="0 0 16 8"><path d="M0,6 V0 M3,6 V0 M6,6 V0 M9,6 V0 M12,6 V0 M15,6 V0" stroke="#6B5340" stroke-width="2"/></svg>
+      <span class="nm">长城(战国旧长城)</span>
+    </div>
+
+    <div class="lg-sep"></div>
+    <label class="lg-switch"><input type="checkbox" id="chk-terr" checked><span class="nm">势力范围</span></label>
+    <label class="lg-switch"><input type="checkbox" id="chk-roads" checked><span class="nm">驰道商路</span></label>
+    <label class="lg-switch"><input type="checkbox" id="chk-pass" checked><span class="nm">关隘渡口</span></label>
+    <label class="lg-switch"><input type="checkbox" id="chk-wall" checked><span class="nm">长城</span></label>
+    <label class="lg-switch"><input type="checkbox" id="chk-label" checked><span class="nm">城池标注</span></label>
+  </div>
+
+  <div class="zoomctl">
+    <button id="btn-in" title="放大">＋</button>
+    <button id="btn-out" title="缩小">－</button>
+    <button id="btn-reset" title="复位">⟲</button>
+  </div>
+
+  <div id="tip"></div>
+
+  <details class="data-table">
+    <summary>数据一览(无障碍表格)</summary>
+    <table id="feat-table"></table>
+  </details>
+
+  <div class="footnote">原型图 · 地形/城池/关隘依据《341_地理志》《402_城池与据点设计》 · 势力色依据《401_战略大地图设计》 · 滚轮缩放/拖拽平移</div>
+
+<svg id="map-svg" viewBox="0 0 1600 1160" xmlns="http://www.w3.org/2000/svg" aria-label="战国七雄势力大地图">
+  <defs>
+    <!-- 羊皮纸噪点 -->
+    <filter id="paper-noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.27  0 0 0 0 0.15  0 0 0 0.05 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+      <stop offset="55%" stop-color="#5A3A1E" stop-opacity="0"/>
+      <stop offset="88%" stop-color="#5A3A1E" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#5A3A1E" stop-opacity="0.30"/>
+    </radialGradient>
+    <linearGradient id="sea-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B9D2DA"/>
+      <stop offset="1" stop-color="#9BBBC7"/>
+    </linearGradient>
+
+    <!-- 各国纹理 -->
+    <pattern id="h-qin"  width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M0,0 L0,7" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="1"/>
+    </pattern>
+    <pattern id="h-chu"  width="8" height="8" patternUnits="userSpaceOnUse">
+      <path d="M0,0 L0,8" stroke="#9B2C2C" stroke-opacity="0.20" stroke-width="1"/>
+    </pattern>
+    <pattern id="h-qi"   width="8" height="8" patternUnits="userSpaceOnUse">
+      <path d="M0,0 L8,0" stroke="#2C5F9B" stroke-opacity="0.20" stroke-width="1"/>
+    </pattern>
+    <pattern id="h-zhao" width="9" height="9" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#3A7D44" fill-opacity="0.22"/>
+    </pattern>
+    <pattern id="h-yan"  width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <path d="M0,0 L0,9" stroke="#6B85A0" stroke-opacity="0.20" stroke-width="1"/>
+    </pattern>
+    <pattern id="h-wei"  width="9" height="9" patternUnits="userSpaceOnUse">
+      <path d="M0,0 L9,9 M9,0 L0,9" stroke="#6D4C9E" stroke-opacity="0.16" stroke-width="0.8"/>
+    </pattern>
+    <pattern id="h-han"  width="9" height="9" patternUnits="userSpaceOnUse">
+      <path d="M0,4 L9,4 M4,0 L4,9" stroke="#C05A1F" stroke-opacity="0.20" stroke-width="0.8"/>
+    </pattern>
+    <pattern id="h-zhou" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M0,0 L6,0 L6,6 L0,6 Z" fill="none" stroke="#8A7A12" stroke-opacity="0.30" stroke-width="0.9"/>
+    </pattern>
+
+    <!-- 图标符号 -->
+    <symbol id="i-castle" viewBox="-12 -12 24 24">
+      <path d="M-9,8 L-9,-2 L-4,-2 L-4,1 L4,1 L4,-2 L9,-2 L9,8 Z"/>
+      <path d="M-11,-2 L0,-10 L11,-2 Z"/>
+      <rect x="-1.6" y="2" width="3.2" height="6" fill="#EDE2C6"/>
+    </symbol>
+    <symbol id="i-tower" viewBox="-12 -12 24 24">
+      <path d="M-6,8 L-6,-3 L-2,-3 L-2,2 L2,2 L2,-3 L6,-3 L6,8 Z"/>
+      <path d="M-8,-3 L0,-9 L8,-3 Z"/>
+    </symbol>
+    <symbol id="i-gate" viewBox="-12 -12 24 24">
+      <path d="M-8,8 L-8,-2 M8,8 L8,-2 M-11,-2 L11,-2 M-11,-6 L11,-6"/>
+      <path d="M-13,-6 L0,-13 L13,-6 Z"/>
+    </symbol>
+    <symbol id="i-ferry" viewBox="-12 -12 24 24">
+      <path d="M-9,3 C-4,8 4,8 9,3 L7,2 C3,6 -3,6 -7,2 Z"/>
+      <path d="M0,2 L0,-6 M0,-6 L6,-2 L0,0 Z"/>
+    </symbol>
+    <symbol id="i-crown" viewBox="-12 -12 24 24">
+      <path d="M-9,3 L-9,-4 L-3,-1 L0,-9 L3,-1 L9,-4 L9,3 Z"/>
+      <path d="M-11,5 L11,5 L11,8 L-11,8 Z"/>
+    </symbol>
+  </defs>
+
+  <g id="world">
+    <!-- 羊皮纸底 -->
+    <rect x="-80" y="-80" width="1760" height="1320" fill="#EDE2C6"/>
+    <rect x="-80" y="-80" width="1760" height="1320" fill="#E6D8B8" filter="url(#paper-noise)"/>
+
+    <!-- ===== 海洋 ===== -->
+    <g id="sea">
+      <!-- 渤海 -->
+      <path d="M1330,480 C1370,470 1420,455 1470,445 C1520,436 1580,430 1620,440
+               L1620,560 C1560,570 1480,585 1430,600 C1390,610 1350,640 1330,680
+               C1315,610 1310,540 1330,480 Z" fill="url(#sea-grad)" stroke="#8FAEBB" stroke-width="2"/>
+      <!-- 黄海/东海 -->
+      <path d="M1480,600 L1620,600 L1620,1160 L1520,1160 L1490,1080 L1460,1000
+               L1455,920 L1470,860 L1485,820 L1500,780 L1505,740 L1500,700 L1480,660
+               C1470,635 1460,620 1455,615 Z" fill="url(#sea-grad)" stroke="#8FAEBB" stroke-width="2"/>
+      <!-- 波浪纹 -->
+      <g stroke="#7E9FAC" stroke-width="1.6" fill="none" opacity="0.75">
+        <path d="M1345,505 q8,-6 16,0 q8,6 16,0 q8,-6 16,0"/>
+        <path d="M1360,545 q8,-6 16,0 q8,6 16,0 q8,-6 16,0"/>
+        <path d="M1395,585 q8,-6 16,0 q8,6 16,0 q8,-6 16,0"/>
+        <path d="M1500,690 q8,-6 16,0 q8,6 16,0 q8,-6 16,0"/>
+        <path d="M1490,780 q8,-6 16,0 q8,6 16,0 q8,-6 16,0"/>
+        <path d="M1490,900 q8,-6 16,0 q8,6 16,0 q8,-6 16,0"/>
+        <path d="M1480,1020 q8,-6 16,0 q8,6 16,0 q8,-6 16,0"/>
+      </g>
+      <!-- 小渔舟 -->
+      <g transform="translate(1410,640) scale(1.1)">
+        <use href="#i-ferry" fill="#6B5340" stroke="#EDE2C6" stroke-width="1.2"/>
+      </g>
+    </g>
+
+    <!-- ===== 势力范围 ===== -->
+    <g id="layer-terr" stroke-width="2.6">
+      <!-- 秦 · 关中 -->
+      <path class="terr qin" d="M150,330 L240,225 L400,170 L560,150 L660,185 L705,290 L712,400 L712,555
+               L745,585 L700,615 L660,600 L610,655 L560,650 L480,645 L400,650 L320,660 L250,675
+               L190,720 L150,700 L120,600 L110,480 L120,380 Z"
+            fill="rgba(26,26,26,0.20)" stroke="#1A1A1A"/>
+      <!-- 秦 · 巴蜀 -->
+      <path class="terr qin" d="M190,760 L140,830 L110,910 L120,990 L220,1040 L360,1020 L470,940
+               L530,860 L560,800 L540,750 L480,720 L400,700 L320,690 L250,690 Z"
+            fill="rgba(26,26,26,0.20)" stroke="#1A1A1A"/>
+      <!-- 韩 -->
+      <path class="terr han" d="M715,520 L790,500 L875,535 L880,615 L745,585 Z"
+            fill="rgba(192,90,31,0.15)" stroke="#C05A1F"/>
+      <!-- 魏 -->
+      <path class="terr wei" d="M875,470 L985,462 L1040,500 L1030,590 L1000,625 L930,630 L885,600 L875,530 Z"
+            fill="rgba(109,76,158,0.14)" stroke="#6D4C9E"/>
+      <!-- 赵 -->
+      <path class="terr zhao" d="M640,220 L700,200 L760,170 L850,165 L900,200 L960,215 L1005,295 L1035,402 L1100,420 L1120,468 L1085,480 L1040,470 L985,462 L930,450 L875,470 L845,455 L790,470 L760,450 L740,415 L700,400 L672,390 L660,330 L655,280 Z"
+            fill="rgba(58,125,68,0.16)" stroke="#3A7D44"/>
+      <!-- 魏 · 安邑(河东) -->
+      <path class="terr wei" d="M715,400 L745,395 L755,430 L748,470 L718,478 L705,448 Z"
+            fill="rgba(109,76,158,0.14)" stroke="#6D4C9E"/>
+      <!-- 燕 -->
+      <path class="terr yan" d="M1000,180 L1080,150 L1180,140 L1300,170 L1380,250 L1400,330 L1360,420
+               L1330,470 L1220,455 L1150,440 L1120,468 L1085,480 L1050,470 L1030,400
+               L1000,300 L990,220 Z"
+            fill="rgba(107,133,160,0.14)" stroke="#6B85A0"/>
+      <!-- 燕 · 辽东 -->
+      <path class="terr yan" d="M1400,120 L1500,140 L1550,200 L1530,300 L1450,320 L1380,280 Z"
+            fill="rgba(107,133,160,0.14)" stroke="#6B85A0"/>
+      <!-- 齐 -->
+      <path class="terr qi" d="M1085,480 L1130,465 L1210,455 L1280,470 L1330,500 L1380,570 L1410,640
+               L1360,700 L1280,730 L1220,745 L1160,715 L1100,690 L1070,640 L1060,580 L1055,520 Z"
+            fill="rgba(44,95,155,0.14)" stroke="#2C5F9B"/>
+      <!-- 楚 -->
+      <path class="terr chu" d="M740,600 L800,585 L860,600 L930,625 L1000,625 L1030,590 L1040,545 L1058,560
+               L1060,580 L1070,640 L1100,690 L1160,715 L1220,745 L1280,760 L1350,790 L1440,820
+               L1520,850 L1560,900 L1540,970 L1480,1010 L1380,1030 L1280,1050 L1160,1040
+               L1060,1010 L970,980 L890,950 L810,930 L740,900 L690,850 L655,800 L640,745
+               L655,700 L640,665 L620,645 L650,620 L670,580 L700,585 Z"
+            fill="rgba(155,44,44,0.15)" stroke="#9B2C2C"/>
+      <!-- 周 · 王畿 -->
+      <path class="terr zhou" d="M770,520 L820,515 L830,560 L795,575 L765,555 Z"
+            fill="rgba(138,122,18,0.18)" stroke="#8A7A12" stroke-width="2.2"/>
+      <!-- 纹理叠加 -->
+      <path class="terr qin"  d="M150,330 L240,225 L400,170 L560,150 L660,185 L705,290 L712,400 L712,555 L745,585 L700,615 L660,600 L610,655 L560,650 L480,645 L400,650 L320,660 L250,675 L190,720 L150,700 L120,600 L110,480 L120,380 Z" fill="url(#h-qin)" stroke="none"/>
+      <path class="terr qin"  d="M190,760 L140,830 L110,910 L120,990 L220,1040 L360,1020 L470,940 L530,860 L560,800 L540,750 L480,720 L400,700 L320,690 L250,690 Z" fill="url(#h-qin)" stroke="none"/>
+      <path class="terr han"  d="M715,520 L790,500 L875,535 L880,615 L745,585 Z" fill="url(#h-han)" stroke="none"/>
+      <path class="terr wei"  d="M875,470 L985,462 L1040,500 L1030,590 L1000,625 L930,630 L885,600 L875,530 Z" fill="url(#h-wei)" stroke="none"/>
+      <path class="terr zhao" d="M640,220 L700,200 L760,170 L850,165 L900,200 L960,215 L1005,295 L1035,402 L1100,420 L1120,468 L1085,480 L1040,470 L985,462 L930,450 L875,470 L845,455 L790,470 L760,450 L740,415 L700,400 L672,390 L660,330 L655,280 Z" fill="url(#h-zhao)" stroke="none"/>
+      <path class="terr wei"  d="M715,400 L745,395 L755,430 L748,470 L718,478 L705,448 Z" fill="url(#h-wei)" stroke="none"/>
+      <path class="terr yan"  d="M1000,180 L1080,150 L1180,140 L1300,170 L1380,250 L1400,330 L1360,420 L1330,470 L1220,455 L1150,440 L1120,468 L1085,480 L1050,470 L1030,400 L1000,300 L990,220 Z" fill="url(#h-yan)" stroke="none"/>
+      <path class="terr yan"  d="M1400,120 L1500,140 L1550,200 L1530,300 L1450,320 L1380,280 Z" fill="url(#h-yan)" stroke="none"/>
+      <path class="terr qi"   d="M1085,480 L1130,465 L1210,455 L1280,470 L1330,500 L1380,570 L1410,640 L1360,700 L1280,730 L1220,745 L1160,715 L1100,690 L1070,640 L1060,580 L1055,520 Z" fill="url(#h-qi)" stroke="none"/>
+      <path class="terr chu"  d="M740,600 L800,585 L860,600 L930,625 L1000,625 L1030,590 L1040,545 L1058,560 L1060,580 L1070,640 L1100,690 L1160,715 L1220,745 L1280,760 L1350,790 L1440,820 L1520,850 L1560,900 L1540,970 L1480,1010 L1380,1030 L1280,1050 L1160,1040 L1060,1010 L970,980 L890,950 L810,930 L740,900 L690,850 L655,800 L640,745 L655,700 L640,665 L620,645 L650,620 L670,580 L700,585 Z" fill="url(#h-chu)" stroke="none"/>
+      <path class="terr zhou" d="M770,520 L820,515 L830,560 L795,575 L765,555 Z" fill="url(#h-zhou)" stroke="none"/>
+    </g>
+
+    <!-- ===== 河流 ===== -->
+    <g id="rivers" fill="none" stroke="#6E9DB8" stroke-linecap="round">
+      <!-- 黄河 -->
+      <path stroke-width="6" opacity="0.85" d="M60,520 C150,500 200,420 260,360 C300,300 320,230 380,190
+               C460,150 560,140 640,160 C700,180 720,260 715,340 C705,430 700,500 700,560
+               C730,520 770,505 860,505 C950,495 1040,490 1120,470 C1210,455 1280,470 1330,500"/>
+      <path stroke-width="2.4" stroke="#C4DDE6" opacity="0.5" d="M60,522 C150,502 200,422 260,362 C300,302 320,232 380,192
+               C460,152 560,142 640,162 C700,182 720,262 715,342 C705,432 700,502 700,562
+               C730,522 770,507 860,507 C950,497 1040,492 1120,472 C1210,457 1280,472 1330,502"/>
+      <!-- 渭水 -->
+      <path stroke-width="4" opacity="0.85" d="M120,640 C220,630 320,625 420,615 C520,608 620,600 700,596"/>
+      <!-- 汾水 -->
+      <path stroke-width="3.4" opacity="0.8" d="M660,240 C655,320 655,420 670,500 C680,540 690,570 700,585"/>
+      <!-- 汉水 -->
+      <path stroke-width="4" opacity="0.85" d="M420,640 C470,660 520,675 580,682 C700,700 800,710 900,716"/>
+      <!-- 长江 -->
+      <path stroke-width="6.5" opacity="0.85" d="M180,780 C260,770 330,750 390,735 C440,720 480,700 520,690
+               C580,685 640,695 690,710 C730,718 760,720 800,718 C860,712 920,712 970,715
+               C1020,720 1070,730 1120,745 C1170,762 1220,780 1270,795 C1320,810 1380,830 1450,845
+               C1500,855 1540,860 1600,865"/>
+      <!-- 淮河 -->
+      <path stroke-width="4.4" opacity="0.85" d="M620,850 C700,845 780,838 860,830 C960,822 1060,818 1160,825
+               C1260,832 1340,845 1420,860 C1480,868 1530,872 1600,875"/>
+      <!-- 岷江 / 湘江 / 泗水 -->
+      <path stroke-width="3" opacity="0.8" d="M365,990 C360,930 355,870 355,810 C355,780 360,760 380,745"/>
+      <path stroke-width="3" opacity="0.8" d="M872,880 C880,930 888,970 896,1010"/>
+      <path stroke-width="3" opacity="0.8" d="M1050,700 C1080,740 1110,780 1140,810 C1160,825 1180,830 1200,832"/>
+    </g>
+
+    <!-- ===== 湖泊 ===== -->
+    <g id="lakes" fill="#8FB6C8" fill-opacity="0.55" stroke="#6E9DB8" stroke-width="2">
+      <!-- 云梦泽 -->
+      <path d="M760,750 C790,735 830,740 860,752 C880,762 875,785 850,795 C820,802 785,798 765,780 C750,768 748,758 760,750 Z"/>
+      <!-- 洞庭湖 -->
+      <ellipse cx="848" cy="882" rx="42" ry="26"/>
+      <!-- 彭蠡泽 -->
+      <ellipse cx="962" cy="765" rx="30" ry="38" transform="rotate(14 962 765)"/>
+      <!-- 太湖(震泽) -->
+      <ellipse cx="1288" cy="812" rx="36" ry="24" transform="rotate(-8 1288 812)"/>
+      <!-- 大野泽 -->
+      <ellipse cx="1022" cy="615" rx="26" ry="18"/>
+      <!-- 云梦泽沼泽点纹 -->
+      <g stroke="#6E9DB8" stroke-width="1.4" fill="none" opacity="0.7">
+        <path d="M775,762 h10 M800,770 h10 M790,785 h10 M830,760 h10 M845,780 h10"/>
+      </g>
+    </g>
+
+    <!-- ===== 山脉 ===== -->
+    <g id="mountains" fill="#C9BFA6" stroke="#8A7B5C" stroke-width="2" stroke-linejoin="round">
+      <g transform="translate(0,0)">
+        <!-- 阴山 -->
+        <path d="M195,155 l16,-26 l16,26 z"/><path d="M235,148 l18,-28 l18,28 z"/><path d="M280,152 l16,-26 l16,26 z"/>
+        <path d="M330,145 l18,-30 l18,30 z"/><path d="M375,138 l20,-32 l20,32 z"/><path d="M430,146 l17,-28 l17,28 z"/>
+        <path d="M485,140 l18,-30 l18,30 z"/><path d="M545,133 l19,-31 l19,31 z"/><path d="M600,143 l16,-27 l16,27 z"/>
+        <!-- 燕山 -->
+        <path d="M885,155 l18,-30 l18,30 z"/><path d="M935,128 l20,-32 l20,32 z"/><path d="M990,133 l18,-30 l18,30 z"/>
+        <path d="M1042,148 l17,-29 l17,29 z"/><path d="M1090,162 l16,-27 l16,27 z"/><path d="M1140,180 l15,-26 l15,26 z"/>
+        <!-- 吕梁山 -->
+        <path d="M622,252 l15,-25 l15,25 z"/><path d="M642,315 l16,-27 l16,27 z"/><path d="M658,375 l15,-25 l15,25 z"/>
+        <path d="M668,425 l14,-24 l14,24 z"/>
+        <!-- 太行山 -->
+        <path d="M757,215 l16,-27 l16,27 z"/><path d="M773,258 l17,-28 l17,28 z"/><path d="M788,305 l16,-27 l16,27 z"/>
+        <path d="M803,352 l17,-29 l17,29 z"/><path d="M815,408 l16,-27 l16,27 z"/><path d="M824,458 l14,-24 l14,24 z"/>
+        <!-- 秦岭 -->
+        <path d="M245,652 l17,-28 l17,28 z"/><path d="M305,655 l19,-30 l19,30 z"/><path d="M372,660 l17,-28 l17,28 z"/>
+        <path d="M440,658 l19,-30 l19,30 z"/><path d="M505,650 l17,-28 l17,28 z"/><path d="M570,655 l19,-30 l19,30 z"/>
+        <path d="M632,668 l16,-27 l16,27 z"/><path d="M672,672 l14,-23 l14,23 z"/>
+        <!-- 崤山 -->
+        <path d="M728,612 l13,-22 l13,22 z"/><path d="M752,597 l12,-20 l12,20 z"/><path d="M770,616 l12,-21 l12,21 z"/>
+        <!-- 伏牛山 -->
+        <path d="M698,652 l14,-24 l14,24 z"/><path d="M722,645 l13,-22 l13,22 z"/><path d="M742,658 l13,-22 l13,22 z"/>
+        <!-- 巫山 -->
+        <path d="M503,702 l14,-24 l14,24 z"/><path d="M526,692 l15,-25 l15,25 z"/><path d="M549,706 l13,-22 l13,22 z"/>
+        <!-- 泰山 -->
+        <path d="M1050,652 l15,-25 l15,25 z"/><path d="M1068,642 l16,-27 l16,27 z"/><path d="M1058,630 l14,-23 l14,23 z"/>
+        <!-- 江南丘陵 -->
+        <path d="M978,882 l13,-22 l13,22 z"/><path d="M1032,902 l13,-22 l13,22 z"/><path d="M1088,882 l13,-22 l13,22 z"/>
+        <path d="M1142,902 l13,-22 l13,22 z"/><path d="M1222,892 l13,-22 l13,22 z"/><path d="M1272,912 l13,-22 l13,22 z"/>
+        <path d="M1332,894 l13,-22 l13,22 z"/>
+        <!-- 辽西山 -->
+        <path d="M1378,232 l14,-24 l14,24 z"/><path d="M1412,252 l14,-24 l14,24 z"/><path d="M1444,238 l13,-22 l13,22 z"/>
+      </g>
+    </g>
+
+    <!-- ===== 驰道(道路) ===== -->
+    <g id="layer-roads" fill="none" stroke="#8B6B3F" stroke-width="2.4" stroke-dasharray="7 5" opacity="0.85">
+      <path d="M430,608 L520,580 L690,590 L752,588 L795,542 L850,525 L960,545"/>                       <!-- 秦东道 -->
+      <path d="M960,545 L985,495 L1105,475 L1190,508 L1260,575"/>                                       <!-- 大梁-临淄 -->
+      <path d="M960,545 L1000,470 L935,360"/>                                                            <!-- 大梁-邯郸 -->
+      <path d="M935,360 L870,290 L790,240 L740,210 L720,200"/>                                          <!-- 邯郸-代-雁门 -->
+      <path d="M935,360 L955,300 L1030,270 L1080,255"/>                                                 <!-- 邯郸-蓟城 -->
+      <path d="M1080,255 L1050,170"/>                                                                   <!-- 蓟城-居庸塞 -->
+      <path d="M430,608 L470,640 L480,690 L440,760 L370,830"/>                                          <!-- 蜀道 -->
+      <path d="M520,650 L615,680 L635,655"/>                                                            <!-- 咸阳-武关-宛城 -->
+      <path d="M635,655 L700,630 L790,600 L900,690 L1010,790"/>                                         <!-- 方城道(南北) -->
+      <path d="M635,655 L690,695 L730,732"/>                                                              <!-- 宛城-郢都 -->
+      <path d="M1010,790 L1130,790 L1210,772 L1245,802 L1310,830 L1340,845"/>                           <!-- 楚东道 -->
+      <path d="M1260,575 L1320,590 L1380,610"/>                                                         <!-- 临淄-即墨 -->
+      <path d="M1260,575 L1215,645 L1175,715"/>                                                         <!-- 临淄-莒城 -->
+      <path d="M960,545 L930,600 L815,565"/>                                                            <!-- 大梁-新郑 -->
+      <path d="M712,540 L724,490 L730,445"/>                                                             <!-- 蒲坂-安邑 -->
+    </g>
+
+    <!-- ===== 长城(战国旧长城) ===== -->
+    <g id="layer-wall" fill="none" stroke="#6B5340" stroke-width="2.6">
+      <path d="M700,185 L760,168 L830,158 L895,158"/>
+      <path d="M1010,140 L1090,125 L1180,130 L1270,150"/>
+      <path d="M700,185 V179 M760,168 V162 M830,158 V152 M895,158 V152" stroke-width="2"/>
+      <path d="M1010,140 V134 M1090,125 V119 M1180,130 V124 M1270,150 V144" stroke-width="2"/>
+    </g>
+
+    <!-- ===== 区域名 ===== -->
+    <g class="map-font" fill="#8A7B5C" font-size="20" letter-spacing="8" text-anchor="middle" opacity="0.8">
+      <text x="380" y="450">關 中</text>
+      <text x="890" y="495">中 原</text>
+      <text x="985" y="425">河 北</text>
+      <text x="1235" y="650">山 東</text>
+      <text x="1000" y="960">荊 楚</text>
+      <text x="410" y="905">巴 蜀</text>
+      <text x="1270" y="330">燕 北</text>
+      <text x="695" y="300">山 西</text>
+      <text x="1330" y="775">吳 越</text>
+      <text x="1515" y="745" font-size="15" letter-spacing="3" fill="#5C7C8C" opacity="0.85">黃海</text>
+      <text x="1390" y="470" font-size="15" letter-spacing="3" fill="#5C7C8C" opacity="0.85">渤海</text>
+    </g>
+
+    <!-- ===== 国名 ===== -->
+    <g class="map-font" fill="#3A2C1B" text-anchor="middle" style="paint-order:stroke" stroke="#EDE2C6" stroke-width="4">
+      <text x="345" y="380" font-size="44" letter-spacing="30" font-weight="bold" opacity="0.75">秦</text>
+      <text x="955" y="935" font-size="52" letter-spacing="34" font-weight="bold" opacity="0.70">楚</text>
+      <text x="1245" y="655" font-size="42" letter-spacing="28" font-weight="bold" opacity="0.70">齊</text>
+      <text x="850" y="295" font-size="42" letter-spacing="28" font-weight="bold" opacity="0.70">趙</text>
+      <text x="1200" y="240" font-size="40" letter-spacing="26" font-weight="bold" opacity="0.70">燕</text>
+      <text x="955" y="608" font-size="38" letter-spacing="24" font-weight="bold" opacity="0.70">魏</text>
+      <text x="775" y="575" font-size="30" letter-spacing="14" font-weight="bold" opacity="0.70">韓</text>
+      <text x="820" y="535" font-size="17" letter-spacing="6" opacity="0.85">周</text>
+    </g>
+
+    <!-- ===== 城池 ===== -->
+    <g id="layer-cities">
+      <!-- 都城 Lv5 -->
+      <g class="feat capital" data-state="qin" transform="translate(430,608)">
+        <circle r="16" fill="none" stroke="#1A1A1A" stroke-width="2"/>
+        <use href="#i-castle" fill="#1A1A1A" stroke="#EDE2C6" stroke-width="1.6"/>
+        <text class="map-font lbl" x="0" y="30" text-anchor="middle" font-size="17" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="2">咸陽</text>
+      </g>
+      <g class="feat capital" data-state="chu" transform="translate(730,732)">
+        <circle r="16" fill="none" stroke="#9B2C2C" stroke-width="2"/>
+        <use href="#i-castle" fill="#9B2C2C" stroke="#EDE2C6" stroke-width="1.6"/>
+        <text class="map-font lbl" x="0" y="30" text-anchor="middle" font-size="17" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="2">郢都</text>
+      </g>
+      <g class="feat capital" data-state="qi" transform="translate(1260,575)">
+        <circle r="16" fill="none" stroke="#2C5F9B" stroke-width="2"/>
+        <use href="#i-castle" fill="#2C5F9B" stroke="#EDE2C6" stroke-width="1.6"/>
+        <text class="map-font lbl" x="0" y="30" text-anchor="middle" font-size="17" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="2">臨淄</text>
+      </g>
+      <g class="feat capital" data-state="zhao" transform="translate(935,360)">
+        <circle r="16" fill="none" stroke="#3A7D44" stroke-width="2"/>
+        <use href="#i-castle" fill="#3A7D44" stroke="#EDE2C6" stroke-width="1.6"/>
+        <text class="map-font lbl" x="0" y="30" text-anchor="middle" font-size="17" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="2">邯鄲</text>
+      </g>
+      <g class="feat capital" data-state="wei" transform="translate(960,545)">
+        <circle r="16" fill="none" stroke="#6D4C9E" stroke-width="2"/>
+        <use href="#i-castle" fill="#6D4C9E" stroke="#EDE2C6" stroke-width="1.6"/>
+        <text class="map-font lbl" x="0" y="30" text-anchor="middle" font-size="17" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="2">大梁</text>
+      </g>
+      <g class="feat capital" data-state="yan" transform="translate(1080,255)">
+        <circle r="16" fill="none" stroke="#6B85A0" stroke-width="2"/>
+        <use href="#i-castle" fill="#6B85A0" stroke="#EDE2C6" stroke-width="1.6"/>
+        <text class="map-font lbl" x="0" y="30" text-anchor="middle" font-size="17" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="2">薊城</text>
+      </g>
+      <g class="feat capital" data-state="han" transform="translate(815,565)">
+        <circle r="16" fill="none" stroke="#C05A1F" stroke-width="2"/>
+        <use href="#i-castle" fill="#C05A1F" stroke="#EDE2C6" stroke-width="1.6"/>
+        <text class="map-font lbl" x="0" y="30" text-anchor="middle" font-size="17" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="2">新鄭</text>
+      </g>
+      <!-- 周王畿 -->
+      <g class="feat zhoucapital" data-state="zhou" transform="translate(795,542)">
+        <circle r="14" fill="none" stroke="#8A7A12" stroke-width="2"/>
+        <use href="#i-crown" fill="#8A7A12" stroke="#EDE2C6" stroke-width="1.5"/>
+        <text class="map-font lbl" x="0" y="27" text-anchor="middle" font-size="16" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="2">洛陽</text>
+      </g>
+
+      <!-- 郡城/县城 Lv2-4 -->
+      <g class="feat city" data-state="qin" transform="translate(330,570)"><circle r="8" fill="#1A1A1A" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">雍城</text></g>
+      <g class="feat city" data-state="qin" transform="translate(520,580)"><circle r="8" fill="#1A1A1A" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">栎阳</text></g>
+      <g class="feat city" data-state="qin" transform="translate(520,648)"><circle r="8" fill="#1A1A1A" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">蓝田</text></g>
+      <g class="feat city" data-state="qin" transform="translate(370,830)"><circle r="8" fill="#1A1A1A" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">成都</text></g>
+      <g class="feat city" data-state="qin" transform="translate(405,745)"><circle r="8" fill="#1A1A1A" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">江州</text></g>
+      <g class="feat city" data-state="chu" transform="translate(635,655)"><circle r="8" fill="#9B2C2C" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">宛城</text></g>
+      <g class="feat city" data-state="chu" transform="translate(790,620)"><circle r="8" fill="#9B2C2C" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">陈城</text></g>
+      <g class="feat city" data-state="chu" transform="translate(1010,790)"><circle r="8" fill="#9B2C2C" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">寿春</text></g>
+      <g class="feat city" data-state="chu" transform="translate(1245,802)"><circle r="8" fill="#9B2C2C" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">姑苏</text></g>
+      <g class="feat city" data-state="chu" transform="translate(1340,845)"><circle r="8" fill="#9B2C2C" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">会稽</text></g>
+      <g class="feat city" data-state="qi" transform="translate(1380,610)"><circle r="8" fill="#2C5F9B" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">即墨</text></g>
+      <g class="feat city" data-state="qi" transform="translate(1175,715)"><circle r="8" fill="#2C5F9B" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">莒城</text></g>
+      <g class="feat city" data-state="zhao" transform="translate(680,360)"><circle r="8" fill="#3A7D44" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">晋阳</text></g>
+      <g class="feat city" data-state="zhao" transform="translate(790,240)"><circle r="8" fill="#3A7D44" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">代郡</text></g>
+      <g class="feat city" data-state="zhao" transform="translate(955,300)"><circle r="8" fill="#3A7D44" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">灵寿</text></g>
+      <g class="feat city" data-state="wei" transform="translate(730,445)"><circle r="8" fill="#6D4C9E" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">安邑</text></g>
+      <g class="feat city" data-state="han" transform="translate(735,555)"><circle r="8" fill="#C05A1F" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">宜阳</text></g>
+      <g class="feat city" data-state="yan" transform="translate(1460,220)"><circle r="8" fill="#6B85A0" stroke="#EDE2C6" stroke-width="1.6"/><use href="#i-tower" fill="#EDE2C6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">襄平</text></g>
+    </g>
+
+    <!-- ===== 关隘 ===== -->
+    <g id="layer-passes">
+      <g class="feat pass" data-state="qin" transform="translate(752,588)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">函谷关</text></g>
+      <g class="feat pass" data-state="qin" transform="translate(615,680)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">武关</text></g>
+      <g class="feat pass" data-state="qin" transform="translate(480,690)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">大散关</text></g>
+      <g class="feat pass" data-state="qin" transform="translate(345,240)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">萧关</text></g>
+      <g class="feat pass" data-state="zhao" transform="translate(782,460)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">井陉</text></g>
+      <g class="feat pass" data-state="zhao" transform="translate(735,210)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">雁门</text></g>
+      <g class="feat pass" data-state="yan" transform="translate(1050,178)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">居庸塞</text></g>
+      <g class="feat pass" data-state="han" transform="translate(850,525)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">虎牢关</text></g>
+      <g class="feat pass" data-state="chu" transform="translate(700,630)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">方城</text></g>
+      <g class="feat pass" data-state="qi" transform="translate(1105,475)"><use href="#i-gate" fill="#7A4A22" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-14" text-anchor="middle" font-size="14" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">平阴</text></g>
+    </g>
+
+    <!-- ===== 渡口 ===== -->
+    <g id="layer-ferries">
+      <g class="feat ferry" data-state="zhou" transform="translate(775,505)"><use href="#i-ferry" fill="#3E6C8F" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-13" text-anchor="middle" font-size="13" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">孟津</text></g>
+      <g class="feat ferry" data-state="qin" transform="translate(712,540)"><use href="#i-ferry" fill="#3E6C8F" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-13" text-anchor="middle" font-size="13" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">蒲坂</text></g>
+      <g class="feat ferry" data-state="wei" transform="translate(985,495)"><use href="#i-ferry" fill="#3E6C8F" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-13" text-anchor="middle" font-size="13" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">白马津</text></g>
+      <g class="feat ferry" data-state="chu" transform="translate(905,718)"><use href="#i-ferry" fill="#3E6C8F" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-13" text-anchor="middle" font-size="13" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">夏口</text></g>
+      <g class="feat ferry" data-state="chu" transform="translate(1210,772)"><use href="#i-ferry" fill="#3E6C8F" stroke="#EDE2C6" stroke-width="1.6"/><text class="map-font lbl" x="0" y="-13" text-anchor="middle" font-size="13" fill="#3A2C1B" stroke="#EDE2C6" stroke-width="3" style="paint-order:stroke" letter-spacing="1">采石</text></g>
+    </g>
+
+    <!-- ===== 指南针 ===== -->
+    <g id="compass" transform="translate(1525,1065)" opacity="0.92">
+      <circle r="42" fill="#E7D9B6" stroke="#5A4630" stroke-width="2.5"/>
+      <circle r="34" fill="none" stroke="#5A4630" stroke-width="1"/>
+      <g stroke="#8A7B5C" stroke-width="1.2">
+        <line x1="-34" y1="0" x2="-14" y2="0"/><line x1="14" y1="0" x2="34" y2="0"/>
+        <line x1="0" y1="-34" x2="0" y2="-14"/><line x1="0" y1="14" x2="0" y2="34"/>
+        <line x1="-24" y1="-24" x2="-10" y2="-10"/><line x1="24" y1="-24" x2="10" y2="-10"/>
+        <line x1="-24" y1="24" x2="-10" y2="10"/><line x1="24" y1="24" x2="10" y2="10"/>
+      </g>
+      <path d="M0,-13 L5,3 L0,0 L-5,3 Z" fill="#9B2C2C"/>
+      <path d="M0,13 L5,-3 L0,0 L-5,-3 Z" fill="#3A2C1B"/>
+      <text class="map-font" x="0" y="-40" text-anchor="middle" font-size="17" fill="#3A2C1B" letter-spacing="2">北</text>
+    </g>
+
+    <!-- ===== 比例尺 ===== -->
+    <g id="scale" transform="translate(150,1100)" opacity="0.9">
+      <line x1="0" y1="0" x2="180" y2="0" stroke="#3A2C1B" stroke-width="2"/>
+      <line x1="0" y1="-7" x2="0" y2="7" stroke="#3A2C1B" stroke-width="2"/>
+      <line x1="60" y1="-7" x2="60" y2="7" stroke="#3A2C1B" stroke-width="1.4"/>
+      <line x1="120" y1="-7" x2="120" y2="7" stroke="#3A2C1B" stroke-width="1.4"/>
+      <line x1="180" y1="-7" x2="180" y2="7" stroke="#3A2C1B" stroke-width="2"/>
+      <rect x="0" y="-5" width="60" height="5" fill="#3A2C1B"/>
+      <rect x="120" y="-5" width="60" height="5" fill="#3A2C1B"/>
+      <text class="map-font" x="0" y="22" text-anchor="middle" font-size="13" fill="#3A2C1B">0</text>
+      <text class="map-font" x="60" y="22" text-anchor="middle" font-size="13" fill="#3A2C1B">250</text>
+      <text class="map-font" x="120" y="22" text-anchor="middle" font-size="13" fill="#3A2C1B">500</text>
+      <text class="map-font" x="180" y="22" text-anchor="middle" font-size="13" fill="#3A2C1B">里</text>
+    </g>
+
+    <!-- 长城标注 -->
+    <g class="map-font" fill="#6B5340" font-size="13" letter-spacing="3" opacity="0.9">
+      <text x="795" y="145" text-anchor="middle">赵长城</text>
+      <text x="1140" y="112" text-anchor="middle">燕长城</text>
+    </g>
+  </g>
+
+  <!-- 暗角 -->
+  <rect x="-80" y="-80" width="1760" height="1320" fill="url(#vignette)" pointer-events="none"/>
+  <!-- 内框 -->
+  <rect x="14" y="14" width="1572" height="1132" fill="none" stroke="#5A4630" stroke-width="3" pointer-events="none"/>
+  <rect x="22" y="22" width="1556" height="1116" fill="none" stroke="#5A4630" stroke-width="1" opacity="0.7" pointer-events="none"/>
+</svg>
+</div>
+
+<script>
+(function(){
+  const svg = document.getElementById('map-svg');
+  const world = document.getElementById('world');
+  const tip = document.getElementById('tip');
+  const shell = document.querySelector('.map-shell');
+
+  /* ============ 要素数据(悬停提示 + 无障碍表格) ============ */
+  const FEATURES = [
+    {n:'咸陽', s:'秦',  t:'都城 Lv5', d:'咸阳宫 · 四方馆 · 兵器工坊 —— 商鞅变法后的新都，天下最讲规矩的城'},
+    {n:'雍城', s:'秦',  t:'城池', d:'秦旧都，宗庙所在'},
+    {n:'栎阳', s:'秦',  t:'城池', d:'商鞅变法的起点'},
+    {n:'蓝田', s:'秦',  t:'城池', d:'蓝田玉矿所在地'},
+    {n:'成都', s:'秦(巴蜀)', t:'城池', d:'天府之国 · 都江堰灌溉的粮仓'},
+    {n:'江州', s:'秦(巴蜀)', t:'城池', d:'长江上游水运枢纽'},
+    {n:'郢都', s:'楚',  t:'都城 Lv5', d:'楚王宫 · 云梦台 · 漆器工坊 —— 白起攻破后焚毁'},
+    {n:'宛城', s:'楚',  t:'城池', d:'冶铁中心，楚国的兵工厂'},
+    {n:'陈城', s:'楚',  t:'城池', d:'楚临时都城(前278-前241年)'},
+    {n:'寿春', s:'楚',  t:'城池', d:'楚后期都城(前241年迁此)'},
+    {n:'姑苏', s:'楚(吴越)', t:'城池', d:'吴国故都，江南水乡'},
+    {n:'会稽', s:'楚(吴越)', t:'城池', d:'越国故都，勾践卧薪尝胆之地'},
+    {n:'臨淄', s:'齐',  t:'都城 Lv5', d:'稷下学宫 · 海盐市 —— "车毂击，人肩摩"，战国最繁华之城'},
+    {n:'即墨', s:'齐',  t:'城池', d:'被围五年不降，田单火牛阵复齐之地'},
+    {n:'莒城', s:'齐',  t:'城池', d:'齐国最后的据点之一'},
+    {n:'邯鄲', s:'赵',  t:'都城 Lv5', d:'丛台 · 马市 —— 被秦围困两年的坚城'},
+    {n:'晋阳', s:'赵',  t:'城池', d:'赵氏故都，三家分晋的起点'},
+    {n:'代郡', s:'赵',  t:'城池', d:'马场所在，战国最好的战马产地之一'},
+    {n:'灵寿', s:'赵(故中山)', t:'城池', d:'中山国故都，前296年并于赵'},
+    {n:'大梁', s:'魏',  t:'都城 Lv5', d:'鸿沟码头 · 书肆街 —— 后被王贲水灌而亡'},
+    {n:'安邑', s:'魏',  t:'城池', d:'魏旧都，河东要地'},
+    {n:'新鄭', s:'韩',  t:'都城 Lv5', d:'韩国都城，六国中第一个被秦攻破'},
+    {n:'宜阳', s:'韩',  t:'城池', d:'天下冶铁中心 —— "劲弩出韩国"的物质基础'},
+    {n:'薊城', s:'燕',  t:'都城 Lv5', d:'黄金台 · 辽东马场 —— 燕昭王筑台招贤之地'},
+    {n:'襄平', s:'燕',  t:'城池', d:'辽东马场，燕国战马驯养地'},
+    {n:'洛陽', s:'周',  t:'王畿', d:'周天子所在 · 九鼎所在 —— 前256年被秦所灭'},
+    {n:'函谷关', s:'秦', t:'关隘', d:'秦的"东大门"，战国时期从未被攻破。合纵六国，最远也只到关前'},
+    {n:'武关',   s:'秦', t:'关隘', d:'秦岭中的险关，秦楚战争的关键通道'},
+    {n:'大散关', s:'秦', t:'关隘', d:'通往巴蜀的咽喉'},
+    {n:'萧关',   s:'秦', t:'关隘', d:'秦国北方屏障'},
+    {n:'井陉',   s:'赵', t:'关隘', d:'太行八陉之一，赵国通往山西的关键通道'},
+    {n:'雁门',   s:'赵', t:'关隘', d:'赵国北疆关隘，李牧在此防御匈奴'},
+    {n:'居庸塞', s:'燕', t:'关隘', d:'燕山中的关隘，燕国北疆屏障'},
+    {n:'虎牢关', s:'韩/周', t:'关隘', d:'洛阳东面屏障，黄河渡口+关隘'},
+    {n:'方城',   s:'楚', t:'关隘', d:'楚国北方防线'},
+    {n:'平阴',   s:'齐', t:'关隘', d:'齐国西面屏障'},
+    {n:'孟津',   s:'周', t:'渡口', d:'黄河最重要的渡口，周武王伐纣在此渡河'},
+    {n:'蒲坂',   s:'秦', t:'渡口', d:'秦晋之间，关中通往山西的门户'},
+    {n:'白马津', s:'魏', t:'渡口', d:'魏国北部防御的重要渡口'},
+    {n:'夏口',   s:'楚', t:'渡口', d:'汉水入长江处，楚国水军基地'},
+    {n:'采石',   s:'楚', t:'渡口', d:'长江下游要津，楚国南方防线'},
+  ];
+  const byName = Object.fromEntries(FEATURES.map(f=>[f.n,f]));
+
+  /* ============ 无障碍表格 ============ */
+  const tb = document.getElementById('feat-table');
+  tb.innerHTML = '<tr><th>名称</th><th>所属</th><th>类型</th><th>简述</th></tr>' +
+    FEATURES.map(f=>`<tr><td>${f.n}</td><td>${f.s}</td><td>${f.t}</td><td>${f.d}</td></tr>`).join('');
+
+  /* ============ 悬停提示 ============ */
+  const featEls = [...document.querySelectorAll('.feat')].map(el=>{
+    const name = el.querySelector('.lbl')?.textContent?.trim() || '';
+    el.addEventListener('pointerenter', e=>{
+      const f = byName[name]; if(!f) return;
+      tip.innerHTML = `<div class="t-name">${f.n}</div>
+        <div class="t-tag">${f.s} · ${f.t}</div>
+        <div class="t-desc">${f.d}</div>`;
+      tip.style.display = 'block';
+      moveTip(e);
+    });
+    el.addEventListener('pointermove', moveTip);
+    el.addEventListener('pointerleave', ()=>{ tip.style.display='none'; });
+    return el;
+  });
+  function moveTip(e){
+    const rect = shell.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = x + 18, top = y + 14;
+    if(left + tw > rect.width - 8) left = x - tw - 12;
+    if(top + th > rect.height - 8) top = y - th - 12;
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+
+  /* ============ 图层开关 ============ */
+  function bind(id, selector){
+    document.getElementById(id).addEventListener('change', e=>{
+      document.querySelectorAll(selector).forEach(el=>{ el.style.display = e.target.checked ? '' : 'none'; });
+    });
+  }
+  bind('chk-terr',  '#layer-terr .terr');
+  bind('chk-roads', '#layer-roads path');
+  bind('chk-pass',  '#layer-passes .feat, #layer-ferries .feat');
+  bind('chk-wall',  '#layer-wall path');
+  bind('chk-label', '#layer-cities .lbl, #layer-passes .lbl, #layer-ferries .lbl');
+
+  /* 图例点击: 单国势力开关 */
+  document.querySelectorAll('.lg-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const st = row.dataset.state;
+      const els = document.querySelectorAll(`#layer-terr .terr.${st}`);
+      const off = row.classList.toggle('off');
+      els.forEach(el=>{ el.style.display = off ? 'none' : ''; });
+    });
+  });
+
+  /* ============ 缩放与平移 ============ */
+  let k = 1, tx = 0, ty = 0;
+  function apply(){ world.setAttribute('transform', `translate(${tx},${ty}) scale(${k})`); }
+  function svgPoint(e){
+    const r = svg.getBoundingClientRect();
+    return { x:(e.clientX-r.left) * svg.viewBox.baseVal.width / r.width,
+             y:(e.clientY-r.top) * svg.viewBox.baseVal.height / r.height };
+  }
+  svg.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const p = svgPoint(e);
+    const f = e.deltaY < 0 ? 1.18 : 1/1.18;
+    const nk = Math.min(4, Math.max(0.7, k*f));
+    tx = p.x - (p.x - tx) * nk/k;
+    ty = p.y - (p.y - ty) * nk/k;
+    k = nk; apply();
+  }, {passive:false});
+
+  let drag = null;
+  svg.addEventListener('pointerdown', e=>{
+    if(e.target.closest('.feat')) return;
+    drag = {x:e.clientX, y:e.clientY, tx, ty};
+    svg.classList.add('dragging');
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', e=>{
+    if(!drag) return;
+    tx = drag.tx + (e.clientX - drag.x) * svg.viewBox.baseVal.width / svg.getBoundingClientRect().width;
+    ty = drag.ty + (e.clientY - drag.y) * svg.viewBox.baseVal.height / svg.getBoundingClientRect().height;
+    apply();
+  });
+  svg.addEventListener('pointerup', ()=>{ drag=null; svg.classList.remove('dragging'); });
+  svg.addEventListener('pointercancel', ()=>{ drag=null; svg.classList.remove('dragging'); });
+
+  document.getElementById('btn-in').addEventListener('click', ()=>{ k=Math.min(4,k*1.3); apply(); });
+  document.getElementById('btn-out').addEventListener('click', ()=>{ k=Math.max(0.7,k/1.3); apply(); });
+  document.getElementById('btn-reset').addEventListener('click', ()=>{ k=1; tx=0; ty=0; apply(); });
+  svg.addEventListener('dblclick', ()=>{ k=1; tx=0; ty=0; apply(); });
+})();
+</script>
+</body>
+</html>

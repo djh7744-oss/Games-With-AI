@@ -1,0 +1,25 @@
+RowName,RouteName,Type,StartCity,EndCity,Waypoints,Distance_Li,TravelDays,GoodsFlow,RiskLevel,RiskDescription,BanditProbability,ArmyInterceptProbability,WeatherRiskProbability,SuggestedGuards
+# 约定: StartCity/EndCity/Waypoints中在DT_WorldLocations.csv有行的地点一律用RowName(英文); 无行的地标(朝歌/汉中/彭城等)保留中文展示名
+TR_01,秦楚商路,陆路,Xianyang,Yingdu,"Wancheng|WuguanPass",800,12,"秦马/铁器→楚 | 楚铜/漆器→秦",Medium,"山路崎岖+楚境流寇",0.20,0.10,0.05,15
+TR_02,中原东西商路,陆路,Daliang,Luoyang,"Xinzheng",300,5,"魏粮/布→周韩 | 韩铁器→魏",High,"中原战区核心，多国军队活动",0.25,0.40,0.10,25
+TR_03,中原南北商路,陆路,Handan,Daliang,"朝歌",350,6,"赵马/皮革→魏 | 魏粮/布→赵",High,"多国边境交错",0.20,0.35,0.10,20
+TR_04,齐赵商路,陆路,Linzi,Handan,"高唐|聊城",500,8,"齐盐/丝绸→赵 | 赵马→齐",Medium,"有固定流寇聚集点",0.30,0.10,0.05,20
+TR_05,燕赵商路,陆路,Jicheng,Handan,"Daijun|中山",600,10,"燕马/皮毛→赵 | 赵铁器→燕",Medium,"中山故地流寇多",0.25,0.15,0.10,15
+TR_06,秦蜀商路,陆路,Xianyang,Chengdu,"汉中|剑阁",700,14,"秦铁器→蜀 | 蜀药材/粮→秦",High,"栈道险峻+巴蜀山匪",0.30,0.05,0.15,20
+TR_07,韩魏商路,陆路,Xinzheng,Daliang,无,200,3,"韩铁器/弓弩→魏 | 魏粮/盐→韩",Medium,"两国边境摩擦频繁",0.15,0.25,0.05,10
+TR_08,楚齐陆路,陆路,Yingdu,Linzi,"Shouchun|彭城",900,15,"楚稻米/漆器→齐 | 齐盐/丝绸→楚",Medium,"长途，途经多个小势力",0.20,0.15,0.10,25
+TR_09,赵秦商路,陆路,Handan,Xianyang,"Jinyang|河西",700,12,"赵马→秦 | 秦玉器/铁器→赵",High,"秦赵世仇，边境紧张",0.15,0.50,0.10,30
+TR_10,魏楚商路,陆路,Daliang,Wancheng,"许|叶县",400,7,"魏布帛→楚 | 楚铜/铁→魏",Low,"相对和平区域",0.10,0.10,0.05,10
+TR_11,燕齐商路,陆路,Jicheng,Linzi,"无棣|济水",450,8,"燕皮毛/人参→齐 | 齐盐/丝绸→燕",Low,"稳定通商路线",0.10,0.05,0.08,10
+TR_12,周室朝贡路,陆路,Luoyang,Xianyang,"HanguPass",300,6,"周礼器→秦 | 秦铁器→周",Low,"官道安全",0.05,0.05,0.05,0
+TR_S01,齐楚海路,海路,Linzi,Kuaiji,"Langya|Haizhou",600,8,"齐盐/丝绸→南 | 楚珍珠/漆器→北",Medium,"近海海盗",0.25,0.05,0.20,20
+TR_S02,渤海商路,海路,Jicheng,Linzi,无,400,5,"燕皮毛/人参→齐 | 齐盐→燕",Low,"渤海内海安全",0.10,0.05,0.15,10
+TR_S03,吴越海路,海路,Kuaiji,Langya,无,500,7,"楚珍珠/漆器→北 | 齐盐→南",Medium,"海盗+暗礁",0.20,0.05,0.25,15
+TR_S04,齐燕远海路,海路,Linzi,Liaoxi,无,700,10,"齐盐/丝绸→燕 | 燕马/皮毛→齐",High,"远海+辽东海盗",0.30,0.05,0.30,25
+TR_S05,楚越沿海路,海路,Kuaiji,Nanhai,"Minzhong",800,14,"楚漆器/铜→南海 | 南海珍珠/香料→楚",High,"远海+百越海盗+台风",0.35,0.05,0.35,30
+TR_R01,黄河上游商路,河道,Xianyang,Daliang,"河东|Luoyang",500,7,"秦→中原物资",Low,"黄河干流",0.05,0.10,0.10,5
+TR_R02,黄河下游商路,河道,Daliang,Linzi,无,500,6,"中原→齐",Low,"黄河干流",0.05,0.05,0.10,5
+TR_R03,长江商路,河道,Yingdu,Kuaiji,"Yingdu|柴桑",600,8,"楚西→楚东",Low,"长江干流",0.10,0.05,0.15,10
+TR_R04,汉水商路,河道,Wancheng,Yingdu,"襄阳",400,5,"秦楚贸易中转",Low,"汉水支流",0.05,0.05,0.10,5
+TR_R05,淮河商路,河道,Shouchun,Huaiyin,"Zhongli",300,4,"楚→齐中转",Low,"淮河干流",0.08,0.10,0.10,5
+TR_R06,渭水商路,河道,Xianyang,HanguPass,无,250,3,"关中内部",Low,"渭水干流",0.02,0.05,0.05,0
