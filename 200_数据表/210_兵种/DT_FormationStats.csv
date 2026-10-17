@@ -1,0 +1,11 @@
+RowName,FormationName,AttackMod,DefenseMod,SpeedMod,FlankProtection,FrontalCharge,RangedCoverage,SwitchTime_50,SwitchTime_200,SwitchTime_500,ApplicableUnits,CountersFormation,CounteredBy,CommandRequirement,Description
+FM_Square,方阵,1.00,1.00,0.90,Medium,Medium,Medium,4,12,28,All,None,None,0,"标准攻守平衡阵型"
+FM_Circle,圆阵,0.65,1.50,0.40,Perfect(360),Low,Low,6,18,40,Infantry,"骑兵冲锋/锥阵","弓弩远射/投石",20,"360度全方位防御"
+FM_Cone,锥阵,1.40,0.65,1.15,Weak,ExtremelyHigh,Low,3,10,22,"HeavyInfantry/Cavalry",方阵,"鹤翼/圆阵",30,"正面突破专用"
+FM_Crane,鹤翼阵,1.10,0.85,0.85,ExtremelyStrong,Medium,Medium,8,22,50,All,"锥阵/方阵",圆阵,40,"两翼包抄包围敌军"
+FM_Scale,鱼鳞阵,0.80,1.40,0.55,Medium,Low,Low,10,28,65,HeavyInfantry,"持久消耗/骑兵","包围/远程",35,"层层防御超强韧性"
+FM_Snake,长蛇阵,0.50,0.40,1.30,ExtremelyWeak,ExtremelyLow,ExtremelyLow,2,6,15,"All(行军)",None,"任何攻击阵型",0,"仅用于快速行军"
+FM_Wing,雁行阵,1.30,0.55,0.80,Weak,Low,ExtremelyHigh,5,16,35,"Archer/Crossbow",步兵方阵,骑兵,25,"V字型远程集火"
+FM_Moon,偃月阵,1.20,0.90,0.75,Strong,High,Medium,9,25,55,"All(优势兵力)",圆阵,"锥阵(突破)",50,"弧形包围"
+FM_Arrow,锋矢阵,1.50,0.40,1.10,ExtremelyWeak,ExtremelyHigh,Low,4,12,26,"骑兵/重步兵突袭","方阵(正面)","鹤翼(侧面)",45,"斩首专用高回报"
+FM_Wagon,车阵,0.40,2.00,0.00,Perfect,None,Medium,15,40,90,"All(野外防守)","骑兵/锥阵","火攻/长期围困",35,"野外防御堡垒"

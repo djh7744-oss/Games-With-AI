@@ -1,0 +1,9 @@
+RowName,TreatyName,MinRelationLevel,MinDuration_Months,MaxDuration_Months,MaxParticipants,BaseSuccessRate,Betrayal_TrustPenalty,Betrayal_RelationPenalty,SpecialCondition
+TREATY_NonAggression,互不侵犯,Neutral,12,36,2,70,-30,-40,None
+TREATY_TradeAgreement,通商协定,Friendly,0,0,2,60,-10,-20,None
+TREATY_MilitaryAccess,军事通行,Allied,12,24,2,40,-15,-25,None
+TREATY_DefenseAlliance,防御同盟,Allied,24,48,3,30,-40,-60,None
+TREATY_OffenseAlliance,进攻同盟,BloodBrother,12,36,5,25,-30,-40,NeedCommonTarget
+TREATY_FullAlliance,全面同盟,BloodBrother,24,0,2,15,-50,-80,None
+TREATY_SharedCommand,军事指挥共享,BloodBrother,0,0,2,10,-30,-50,OnlyDuringWar
+TREATY_Hezong,合纵同盟,Neutral,0,0,7,35,-20,-30,NeedCommonThreat

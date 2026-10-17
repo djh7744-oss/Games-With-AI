@@ -1,0 +1,35 @@
+RowName,Biome,BaseTerrain,AltTerrain1,AltTerrain2,HeightMin,HeightMax,WaterProbability,ForestDensity,SettlementProbability,BattleSizeMax,SpecialFeatures,WeatherTable
+Guanzhong,关中,平原,丘陵,河流,100,800,0.15,0.2,0.3,4000,"麦田/果园/窑洞遗迹(视觉)/渭河渡口(战略)",Guanzhong_Weather
+Zhongyuan,中原,平原,河流,城镇,50,300,0.25,0.1,0.5,6000,"密集农田/水渠网络/村庄密集/黄河渡口",Zhongyuan_Weather
+Hebei,河北,平原,草原,丘陵,50,600,0.10,0.15,0.2,5000,"白桦林/风车/马场遗迹/适合骑兵的广阔平地",Hebei_Weather
+Shandong,山东,丘陵,沿海,平原,0,500,0.30,0.3,0.4,4500,"海岸线/盐田/渔村/松林丘陵/港口",Shandong_Weather
+Jingchu,荆楚,河流,森林,沼泽,0,400,0.50,0.6,0.15,3500,"长江/云梦泽湿地/竹林中雾气/水稻田/水网密布",Jingchu_Weather
+Bashu,巴蜀,山地,河流,森林,400,2000,0.30,0.5,0.10,3000,"梯田/栈道/红砂岩/盆地雾气/剑阁险道",Bashu_Weather
+Shanxi,山西,山地,丘陵,高原,500,1500,0.05,0.1,0.10,3500,"黄土沟壑/露天矿场/窑洞/冶铁坊(宜阳)",Shanxi_Weather
+Yanbei,燕北,草原,山地,雪原,300,1200,0.05,0.2,0.05,3000,"草原/针叶林/长城遗址/冬季积雪/辽东马场",Yanbei_Weather
+Wuyue,吴越,河流,沿海,平原,0,300,0.55,0.3,0.25,3500,"小桥流水/桑田/渔船/江南水乡/湖泽",Wuyue_Weather
+
+# ==================== 地形→战场类型转换表 ====================
+RowName,SourceTerrain,BattleType,MapSize,BattleWidth,DeployDistance,AttackerBuff,DefenderBuff,SpecialRules
+Plain_Battle,平原,平原会战,2000x2000,1800,800,骑兵冲锋+20%,无,标准对阵列
+Hill_Battle,丘陵,丘陵遭遇,1800x2000,1600,700,弓兵射程+10%,占高地防御+10%,轻微起伏
+Mountain_Battle,山地,山地伏击,1500x2000,1200,600,弓兵射程+20%,骑兵不可用+伏击+40%,险峻地形
+Forest_Battle,森林,密林伏击,1500x1500,1000,500,火攻+50%,伏击+50%+弓射程-50%,视野受限
+River_Battle,河流,渡口争夺,2000x1000,800,400,无,守方+30%,渡河方需抢占渡口
+Swamp_Battle,沼泽,沼泽缠斗,1000x1000,600,300,无,重甲不可通行+移速35%,限制机动
+Snow_Battle,雪地,雪原会战,2000x2000,1600,700,燕赵耐寒部队无惩罚,非耐寒部队士气-2%+移速50%,冬季限定
+Coastal_Battle,沿海,滩涂登陆,2000x1500,1200,600,水军+30%,登陆方攻-20%,水陆交界
+Desert_Battle,沙漠,戈壁追逐,2500x2500,2000,1000,骑兵移速+10%,体力消耗×2+水源限制,夏季高温
+Siege_Lv1,城镇,攻城(Lv1-2),2000x2000,1000,500,攻方器械可造,守方城防+50%,木栅土墙
+Siege_Lv3,城镇,攻城(Lv3-4),2000x2000,1000,500,攻方器械可造+投石,守方城防+100%,砖石城墙+瓮城
+Siege_Lv5,城镇,攻城(Lv5都城),2000x2000,1200,600,攻方全器械,守方城防+150%+护城河,三重城墙
+
+# ==================== 战场生成参数表(UE5 Procedural) ====================
+RowName,LandscapeSize,VertsPerMeter,HeightScale,TreeDensity,RockDensity,BuildingDensity,FogDensity,WindSpeed,SunAngle,CloudCover
+Plains_Battle,2000,4,0.3,0.05,0.02,0.05,0.1,0.3,55,0.2
+Hills_Battle,1800,4,0.6,0.15,0.08,0.02,0.2,0.4,50,0.3
+Mountain_Battle,1500,4,1.5,0.10,0.25,0.01,0.5,0.6,45,0.4
+Forest_Battle,1500,4,0.4,0.80,0.10,0.01,0.3,0.2,40,0.3
+River_Battle,2000,4,0.3,0.10,0.05,0.02,0.4,0.5,50,0.4
+Swamp_Battle,1000,4,0.2,0.40,0.03,0.01,0.7,0.1,30,0.6
+Snow_Battle,2000,4,0.4,0.15,0.05,0.01,0.2,0.7,20,0.8
